@@ -29,6 +29,8 @@
 /* 10 minutes lifetime of routes */
 #define RPL_CONF_DEFAULT_LIFETIME 10
 
+#define RPL_DEFAULT_ROUTE_INFINITE_LIFETIME 1
+
 /* Save some ROM */
 #undef UIP_CONF_TCP
 #define UIP_CONF_TCP    0

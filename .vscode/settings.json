@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "contiki-lib.h": "c",
+        "contiki.h": "c",
+        "uip-udp-packet.h": "c"
+    }
+}

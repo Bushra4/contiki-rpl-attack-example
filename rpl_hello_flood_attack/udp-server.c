@@ -3,6 +3,7 @@
 #include "contiki-net.h"
 #include "net/ip/uip.h"     // uip_newdata()
 #include "net/rpl/rpl.h"
+#include "net/linkaddr.h"
 
 // for collect-view
 #include "dev/serial-line.h"
@@ -28,8 +29,8 @@
 // Data-link layer -> IEEE 802.15.4(MAC) -> MAC header length = 14
 #define UIP_IP_BUF ((struct uip_ip_hdr *)&uip_buf[UIP_LLH_LEN])
 
-#define UDP_CLIENT_PORT 1234
-#define UDP_SERVER_PORT 4321
+#define UDP_CLIENT_PORT 8775
+#define UDP_SERVER_PORT 5688
 
 static struct uip_udp_conn *server_conn;
 
@@ -51,14 +52,14 @@ PROCESS(udp_server_process, "UDP SERVER PROCESS");
     when the module boots
         + &name: Reference to the process name
 */
-AUTOSTART_PROCESSES(&udp_server_process);
+AUTOSTART_PROCESSES(&udp_server_process, &collect_common_process);
 /*---------------------------------------------------------------------------*/
 void collect_common_set_sink(void) {
-
+    printf("I am sink!\n");
 }
 /*---------------------------------------------------------------------------*/
 void collect_common_net_print(void) {
-    
+    printf("I am sink!\n");
 }
 void collect_common_send(void) {
     // Server never sends
@@ -70,41 +71,25 @@ void collect_common_net_init(void) {
     uart1_set_input(serial_line_input_byte);
 #endif 
     serial_line_init();
+    PRINTF("I am sink!\n");
 }
 /*---------------------------------------------------------------------------*/
 static void tcpip_handler(void) {
-    char *appdatac;
-    uint8_t *appdatai;
+    uint8_t *appdata;
     linkaddr_t sender;
     uint8_t seqno;
     uint8_t hops;
     
     if(uip_newdata()) { // Is new incoming data availabel?
-        // print to mode output
-        // appdatac = (char *)uip_appdata; // uip_appdata is a pointer to an application data in the packet buffer
-        // adding terminate character to the end of appdata array
-        // appdatac[uip_datalen()] = 0; // uip_datalen() returns the length of any incoming data that is currenly available (if available) in the uip_appdata buffer
-        // PRINTF("DATA recv '%s' from ", appdatac);
-        // PRINTF("%d", UIP_IP_BUF->srcipaddr.u8[sizeof(UIP_IP_BUF->srcipaddr.u8) - 1]);
-        // PRINTF("\n");
-
         // for collect-view
-        appdatai = (uint8_t *)uip_appdata;
+        appdata = (uint8_t *)uip_appdata;
         sender.u8[0] = UIP_IP_BUF->srcipaddr.u8[15];
         sender.u8[1] = UIP_IP_BUF->srcipaddr.u8[14];
-        seqno = *appdatai;
+        seqno = *appdata;
         hops = uip_ds6_if.cur_hop_limit - UIP_IP_BUF->ttl + 1;
-        collect_common_recv(&sender, seqno, hops, appdatai + 2, uip_datalen() - 2);
+        collect_common_recv(&sender, seqno, hops, appdata + 2, uip_datalen() - 2);
     }
 }
-#if SERVER_REPLY
-    PRINTF("DATA sending reply\n");
-    // copy srcipaddr -> ripaddr
-    uip_ipaddr_copy(&server_conn->ripaddr, &UIP_IP_BUF->srcipaddr);
-    uip_udp_packet_send(server_conn, "Reply", sizeof("Reply"));
-    //set IP address destination of server connection a to unspecified (clear old address)
-    uip_create_unspecified(&server_conn->ripaddr);
-#endif
 /*---------------------------------------------------------------------------*/
 static void print_local_addresses(void) {
     int i;
@@ -148,27 +133,14 @@ PROCESS_THREAD(udp_server_process, ev, data) {
     compressed address of fd00:1111:22ff:fe33:xxxx)
     Note Wireshark's ICMPv6 checksum verification depends on the correct
     uncompressed addresses.
-*/
-#if 0
-/* Mode 1 - 64 bits inline */
-    uip_ip6addr(&ipaddr, UIP_DS6_DEFAULT_PREFIX, 0, 0, 0, 0, 0, 0, 1);
-#elif 1
 /* Mode 2 - 16 bits inline */
-    uip_ip6addr(&ipaddr, UIP_DS6_DEFAULT_PREFIX, 0, 0, 0, 0, 0x00ff, 0xfe00, 1);
-#else
-/* Mode 3 - derived from link local (MAC) address */
-    uip_ip6addr(&ipaddr, UIP_DS6_DEFAULT_PREFIX, 0, 0, 0, 0, 0, 0, 0);
-    //set the last 64bits of an IP address based on the MAC address
-    uip_ds6_set_addr_iid(&ipaddr, &uip_lladdr);
-#endif
-    PRINT6ADDR(&ipaddr);
-    PRINTF("\n");
+    uip_ip6addr(&ipaddr, UIP_DS6_DEFAULT_PREFIX, 0, 0, 0, 0, 0, 0, 1);
     uip_ds6_addr_add(&ipaddr, 0, ADDR_MANUAL);
     root_if = uip_ds6_addr_lookup(&ipaddr);
     if(root_if != NULL) {
         rpl_dag_t *dag;
         dag = rpl_set_root(RPL_DEFAULT_INSTANCE, (uip_ip6addr_t *)&ipaddr);
-        // uip_ip6addr(&ipaddr, UIP_DS6_DEFAULT_PREFIX, 0, 0, 0, 0, 0, 0, 0);
+        uip_ip6addr(&ipaddr, UIP_DS6_DEFAULT_PREFIX, 0, 0, 0, 0, 0, 0, 0);
         rpl_set_prefix(dag, &ipaddr, 64);
         PRINTF("created a new RPL dag\n");
     }
@@ -176,16 +148,14 @@ PROCESS_THREAD(udp_server_process, ev, data) {
         PRINTF("failed to create a new RPL DAG\n");
     }
 #endif /* UIP_CONF_ROUTER */
+
     print_local_addresses();
 
     /* The data sink runs with a 100% duty cycle in order to ensure high
         packet reception rates. */
-    NETSTACK_MAC.off(1);
+    NETSTACK_RDC.off(1);
 
     server_conn = udp_new(NULL, UIP_HTONS(UDP_CLIENT_PORT), NULL);
-    if(server_conn == NULL) {
-        PRINTF("No UDP connection available, exiting the process!\n");
-    }
     udp_bind(server_conn, UIP_HTONS(UDP_SERVER_PORT));
 
     PRINTF("Created a server connection with remote address ");
