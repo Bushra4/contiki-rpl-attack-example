@@ -26,6 +26,8 @@
 #define DEBUG DEBUG_FULL
 #include "net/ip/uip-debug.h"
 
+#define NORMAL_NODE
+
 static struct uip_udp_conn *client_conn;
 static uip_ipaddr_t server_ipaddr;
 

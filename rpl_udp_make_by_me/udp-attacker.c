@@ -56,32 +56,6 @@ static void tcpip_handler(void) {
     }
 }
 /*---------------------------------------------------------------------------*/
-static void send_packet(void *ptr) {
-    char buf[MAX_PAYLOAD_LEN];
-
-#ifdef SERVER_REPLY
-    uint8_t num_used = 0;
-    uip_ds6_nbr_t *nbr;
-
-    nbr = nbr_table_head(ds6_neighbors);
-    while(nbr != NULL) {
-        nbr = nbr_table_next(ds6_neighbors, nbr);
-        num_used++;
-    }
-
-    if(seq_id > 0) {
-        ANNOTATE("#A r=%d/%d,color=%s,n=%d %d\n", reply, seq_id, 
-                    reply == seq_id ? "GREEN" : "RED", uip_ds6_route_num_routes(), num_used);
-
-    }
-#endif /*SERVER_REPLY*/
-
-    seq_id++;
-    PRINTF("DATA send to %d 'Hello %d'\n",
-            server_ipaddr.u8[sizeof(server_ipaddr.u8) - 1], seq_id);
-    sprintf(buf, "Hello %d from client", seq_id);
-    uip_udp_packet_sendto(client_conn, buf, strlen(buf), &server_ipaddr, UIP_HTONS(UDP_SERVER_PORT));
-}
 /*---------------------------------------------------------------------------*/
 static void print_local_addresses(void) {
     int i;

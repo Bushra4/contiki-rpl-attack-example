@@ -32,6 +32,10 @@
 #define UDP_CLIENT_PORT 8775
 #define UDP_SERVER_PORT 5688
 
+#ifndef NORMAL_NODE
+#define NORMAL_NODE 1
+#endif
+
 static struct uip_udp_conn *server_conn;
 
 /*
