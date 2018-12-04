@@ -1,7 +1,13 @@
 {
     "files.associations": {
-        "contiki-lib.h": "c",
+        "stdio.h": "c",
+        "leds.h": "c",
+        "serial-line.h": "c",
+        "powertrace.h": "c",
+        "random.h": "c",
         "contiki.h": "c",
-        "uip-udp-packet.h": "c"
+        "uip-debug.h": "c",
+        "rpl.h": "c",
+        "rpl-conf.h": "c"
     }
 }
